@@ -4,19 +4,42 @@ const uuid = require('uuid/v4');
 const ipfsOptions = {
   EXPERIMENTAL: {
     pubsub: true
-  }
+  },
+  relay: {enabled: true, hop: {enabled: true, active: true}},
+  host: 'localhost',
+  port: '5001'
 };
 
 // Create IPFS instance
-const ipfs = new IPFS('localhost','5001');
+const ipfs = new IPFS(ipfsOptions);
 const orbitdb = new OrbitDB(ipfs);
 let db = null; 
 async function loadDB() {
-	db = await orbitdb.docs('todo');
+	//db = await orbitdb.docs('todo1');
+	try {
+		db = await orbitdb.create('todo2','docstore',{
+			write: ['*']
+		});
+	}	
+	catch(e) {
+		console.log(e);
+		db = await orbitdb.open('/orbitdb/QmQvUq6dZa1gR9KZn18diAsnSD6C4xsvdkbZvmq8MeL7rG/todo2')
+	}
 	// load the local store of the data
 	db.events.on('ready', () => {
 		console.log('database is ready.')
 	});
+
+	db.events.on('replicate.progress', (address, hash, entry, progress, have) => {
+		console.log('replication is in progress');
+	});
+
+	db.events.on('replicated', (address) => {
+		console.log('Replication done.');
+	})
+
+	console.log(db.address.toString());
+	//orbitdb.open(db.address.toString());
 	db.load();
 }
 loadDB();
